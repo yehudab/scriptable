@@ -39,10 +39,10 @@ function getDashcamUrl() {
 // capture image from dashcam and return as Image when ready
 async function getLiveImage() {
   let url = getDashcamUrl();
-  console.log("get live image via "+ url);
+  console.log(`get live image via ${url}`);
   let r = new Request(url);
   let image = await r.loadImage();
-  console.log("got " + (image ? "a valid" : "an invalid") + " live image");
+  console.log(`got ${image ? "a valid" : "an invalid"} live image`);
   return image;
 }
 
@@ -51,9 +51,9 @@ async function getDebugImage(){
   let fm = FileManager.iCloud();
 //   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180810222450.JPG");
   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180922125012.JPG");
-  console.log("get debug image from file: "+ filePath);
+  console.log(`get debug image from file: ${filePath}`);
   let image = await Image.fromFile(filePath);
-  console.log("got " + (image ? "a valid" : "an invalid") + " debug image");
+  console.log(`got ${image ? "a valid" : "an invalid"} debug image`);
   return image;
 }
 
