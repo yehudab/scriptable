@@ -1,7 +1,8 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
-// icon-color: brown; icon-glyph: code; share-sheet-inputs: file-url, url, plain-text;
-// Capture an image from a dashcam, anaylyze and display car make and plate number
+// always-run-in-app: true; icon-color: brown;
+// icon-glyph: code; share-sheet-inputs: file-url, url, plain-text;
+// Capture an image from a dashcam, analyze and display car make and plate number
 // Image recognition is done using openalpr.com cloud API
 // Debug mode allows capture from local image file
 
@@ -10,7 +11,7 @@ const IMAGE_WIDTH = 2592; // DDPai mini2
 const IMAGE_HEIGHT = 1520;
 const TOP_CROP = Math.round(IMAGE_HEIGHT/3); // remove sky
 const BOTTOM_CROP = Math.round(IMAGE_HEIGHT/6); // remove car bonnet
-const ALPR_KEY = "sk_************";
+const ALPR_KEY = Keychain.get("ALPR_KEY");
 
 let image = await getImage();
 let alpr = await recognize(image);
@@ -35,7 +36,7 @@ function getDashcamUrl() {
   let url = `http://193.168.0.1/A_${timestamp}.jpg`;
   return url;
 }
-
+  
 // capture image from dashcam and return as Image when ready
 async function getLiveImage() {
   let url = getDashcamUrl();
@@ -124,14 +125,11 @@ async function recognize(image) {
   let scaled = resizeImage(initialCropped, resizeScale);
   
   // upload for image recognition
-  let req = new Request(`https://api.openalpr.com/v2/recognize_bytes?recognize_vehicle=1&country=eu&secret_key=${ALPR_KEY}`);
+  let req = new Request(`https://api.openalpr.com/v2/recognize?recognize_vehicle=1&country=eu&secret_key=${ALPR_KEY}`);
   req.method = "POST"
-  // todo: switch to form multipart for Scriptable 1.0.1
-  // req.addImageToMultipart(scaled, "image");
   let imageData = Data.fromJPEG(scaled);
-  let imageBase64 = imageData.toBase64String();
-  console.log(`Sending image for detection. body size: ${imageBase64.length}`);
-  req.body = imageBase64;
+  req.addFileDataToMultipart(imageData, "image/jpeg", "image", "image.jpeg");
+  console.log(`Sending image for detection`);
   
   let result = await req.loadJSON();
   console.log(result);
