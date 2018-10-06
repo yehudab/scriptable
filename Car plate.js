@@ -1,12 +1,14 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // always-run-in-app: true; icon-color: brown;
-// icon-glyph: code; share-sheet-inputs: file-url, url, plain-text;
+// icon-glyph: car-alt; share-sheet-inputs: file-url, url, plain-text;
 // Capture an image from a dashcam, analyze and display car make and plate number
 // Image recognition is done using openalpr.com cloud API
 // Debug mode allows capture from local image file
 
 const DEBUG = true;
+const DEBUG_SIRI = true;
+const ALLOW_ONLY_DIGITS = true;
 const IMAGE_WIDTH = 2592; // DDPai mini2
 const IMAGE_HEIGHT = 1520;
 const TOP_CROP = Math.round(IMAGE_HEIGHT/3); // remove sky
@@ -51,7 +53,11 @@ async function getLiveImage() {
 async function getDebugImage(){
   let fm = FileManager.iCloud();
 //   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180810222450.JPG");
-  let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180922125012.JPG");
+//   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180922125012.JPG");
+//   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/N_MCfa_20180902174122_0096_L.JPG");
+  let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/N_MCfa_20180815083721_0024_L.JPG");
+//   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/A_20180922125012_2.jpg");
+//   let filePath = fm.joinPath(fm.documentsDirectory(), "DDPai/IMG_0919.jpg");
   console.log(`get debug image from file: ${filePath}`);
   let image = await Image.fromFile(filePath);
   console.log(`got ${image ? "a valid" : "an invalid"} debug image`);
@@ -103,6 +109,10 @@ function cropImage(image, location, factor) {
   return result;
 }
 
+function isDigits(plate) {
+  return /^\d+$/.test(plate);
+}
+
 // the main "thing"
 // processing includes:
 // 1. crop top (sky) and bottom (bonnet) parts of the image
@@ -139,9 +149,29 @@ async function recognize(image) {
     let topResult = result.results[0];
     let cropped = cropImage(initialCropped, topResult.vehicle_region, resizeScale);
     let make = topResult.vehicle.make[0].name;
+    let plate = topResult.plate;
+    if (ALLOW_ONLY_DIGITS && !isDigits(plate)) {
+      console.log(`looking for numeric alternatives to "${plate}"`);
+      for (let i = 0; i < topResult.candidates.length; i++) {
+        let c = topResult.candidates[i];
+        if (c.confidence < 75) {
+          console.log(`confidence of ${c.confidence} too low`);
+          break;
+        }
+        if (isDigits(c.plate)) {
+          console.log(`switching from ${plate} to ${c.plate}`);
+          plate = c.plate;
+          break;
+        }
+      }
+    }
+    let formattedPlate = plate
+          .replace(/^(\d{2-3})(\d{3})$/, "$1-$2")
+          .replace(/^(\d{2})(\d{3})(\d{2})$/, "$1-$2-$3")
+          .replace(/^(\d{3})(\d{2})(\d{3})$/, "$1-$2-$3");
     return {
       "cropped": cropped,
-      "carId": `a ${make}, plate number: ${topResult.plate}`
+      "carId": `a ${make}, plate number: ${formattedPlate}`
     };
   }
   return {
@@ -162,7 +192,7 @@ function displayResults(image, carId) {
   table.addRow(row);
   QuickLook.present(table);
   let siriReply = `Photo saved. Car in photo is ${carId}`;
-  if (config.runsWithSiri) {
+  if (config.runsWithSiri || DEBUG_SIRI) {
     Speech.speak(siriReply);
   } else {
     console.log(siriReply);
