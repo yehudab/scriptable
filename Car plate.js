@@ -1,12 +1,12 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
-// always-run-in-app: true; icon-color: brown;
-// icon-glyph: car-alt; share-sheet-inputs: file-url, url, plain-text;
+// icon-color: brown; icon-glyph: car-alt; share-sheet-inputs: file-url, url, plain-text;
 // Capture an image from a dashcam, analyze and display car make and plate number
 // Image recognition is done using openalpr.com cloud API
 // Debug mode allows capture from local image file
 
 const DEBUG = true;
+// const DEBUG = false;
 const DEBUG_SIRI = true;
 const ALLOW_ONLY_DIGITS = true;
 const IMAGE_WIDTH = 2592; // DDPai mini2
@@ -91,8 +91,8 @@ function resizeImage(image, factor) {
 // crop image according to the region containg the car.
 // location should be supplied as type Rect (x, y, width, height). 
 // factor should match the factor used for scaling the image
-function cropImage(image, location, factor) {
-  let perAxisRatio = Math.sqrt(factor);
+function cropImage(image, location) {
+  let perAxisRatio = 1;
   let l = new Rect(
     Math.round(location.x * perAxisRatio),
     Math.round(location.y * perAxisRatio),
@@ -121,23 +121,11 @@ function isDigits(plate) {
 // 4. if car was fiund in the photo, get make and car plate number. 
 // 5. crop original image according to the car coordinates on the image
 async function recognize(image) {
-  const resizeScale = 2;
-  
-  // crop
-  let initialCropped = cropImage(image, new Rect(
-    0,
-    TOP_CROP,
-    IMAGE_WIDTH,
-    IMAGE_HEIGHT-TOP_CROP-BOTTOM_CROP
-  ), 1);
-  
-  // scale
-  let scaled = resizeImage(initialCropped, resizeScale);
   
   // upload for image recognition
   let req = new Request(`https://api.openalpr.com/v2/recognize?recognize_vehicle=1&country=eu&secret_key=${ALPR_KEY}`);
   req.method = "POST"
-  let imageData = Data.fromJPEG(scaled);
+  let imageData = Data.fromJPEG(image);
   req.addFileDataToMultipart(imageData, "image/jpeg", "image", "image.jpeg");
   console.log(`Sending image for detection`);
   
@@ -147,7 +135,8 @@ async function recognize(image) {
   // check results and find vehicle data and location
   if (result && result.results && result.results.length >= 1) {
     let topResult = result.results[0];
-    let cropped = cropImage(initialCropped, topResult.vehicle_region, resizeScale);
+    let cropped = cropImage(image, topResult.vehicle_region);
+//     let cropped = image;
     let make = topResult.vehicle.make[0].name;
     let plate = topResult.plate;
     if (ALLOW_ONLY_DIGITS && !isDigits(plate)) {
