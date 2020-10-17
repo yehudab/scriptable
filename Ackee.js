@@ -2,8 +2,15 @@
 // These must be at the very top of the file. Do not edit.
 // icon-color: teal; icon-glyph: chart-bar;
 
-// configuration consts
+// On first run only, uncomment line bellow and replace '888...' with the token returned after login
+// Keychain.get("ACKEE_KEY", '88888888-8888-8888-8888-888888888888')
+
+// Ackee configuration
 const ACKEE_KEY = Keychain.get("ACKEE_KEY")
+const AckeeAPI = 'https://ackee.yehudab.com/api'
+const domainName = 'yehudab.com'
+
+// Chart configuration 
 const chartHeight = 150
 const chartWidth = 200
 const leftPad = 20
@@ -37,8 +44,7 @@ const headers = {
 
 // Use GraphQL to get number of visits to the site
 async function getAckeeStats() {
-  const url = 'https://ackee.yehudab.com/api'
-  const r = new Request(url)
+  const r = new Request(AckeeAPI)
   r.headers = headers
   r.body = JSON.stringify(body)
   r.method = "post"
@@ -119,7 +125,7 @@ const last7Days = await getAckeeStats()
 const graph = getBarChart(last7Days)
 let w = new ListWidget()
 w.backgroundColor = new Color('#333838')
-let titleTxt = w.addText('yehudab.com')
+let titleTxt = w.addText(domainName)
 w.addSpacer(10)
 let graphWidgetImage = w.addImage(graph)
 if (!config.runsInWidget) {
