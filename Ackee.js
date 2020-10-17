@@ -116,7 +116,7 @@ function getBarChart(series) {
 }
 
 const last7Days = await getAckeeStats()
-const graph = getGraph(last7Days)
+const graph = getBarChart(last7Days)
 let w = new ListWidget()
 w.backgroundColor = new Color('#333838')
 let titleTxt = w.addText('yehudab.com')
