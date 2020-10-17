@@ -1,7 +1,14 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: teal; icon-glyph: chart-bar;
+
+// configuration consts
 const ACKEE_KEY = Keychain.get("ACKEE_KEY")
+const chartHeight = 150
+const chartWidth = 200
+const leftPad = 20
+const barColorHex = '#6e7373'
+const lastBarColorHex = '#73fac8'
 
 const query = `query fetchViews($interval: Interval!, $type: ViewType!) {
   domains {
@@ -28,6 +35,7 @@ const headers = {
   "content-type": "application/json"
 }
 
+// Use GraphQL to get number of visits to the site
 async function getAckeeStats() {
   const url = 'https://ackee.yehudab.com/api'
   const r = new Request(url)
@@ -35,45 +43,69 @@ async function getAckeeStats() {
   r.body = JSON.stringify(body)
   r.method = "post"
   const result = await r.loadJSON()
-  return result
+  const last7Days = result.data.domains[0].statistics.views.slice(0, 7).reverse().map(s => s.count)
+  return last7Days
 }
 
-function getGraph(stats) {
+const bestTicks = [
+  [0,1,2],
+  [0,1,2],
+  [0,1,2],
+  [0,2,4],
+  [0,2,4],
+  [0,3,6],
+  [0,3,6],
+  [0,4,8],
+  [0,4,8],
+  [0,5,10],
+  [0,5,10]
+]
+
+// Rough way to calculate the best series of 0-based tick marks on the y axis
+function getBestTicks(maxValue) {
+  const maxPow10 = Math.pow(10, Math.ceil(Math.log10(maxValue))-1);
+  const normalized = Math.ceil(maxValue/maxPow10)
+  if (isNaN(normalized)) {
+    return [0, 1, 2]  
+  } else {
+    return bestTicks[normalized].map(x => x*maxPow10)
+  }
+}
+
+// Draw bar chart of the given series on a DrawContext and return the image from the DC
+function getBarChart(series) {
   let dc = new DrawContext()
-  const height = 150
-  const width = 200
-  const leftPad = 20
-  const drawWidth = width - leftPad
-  const barWidth = drawWidth/stats.length - 2
-  const barColor = new Color('#6e7373')
-  const lastBarColor = new Color('#73fac8')
+  const drawWidth = chartWidth - leftPad
+  const barWidth = drawWidth/series.length - 2
+  const barColor = new Color(barColorHex)
+  const lastBarColor = new Color(lastBarColorHex)
   dc.respectScreenScale = true
   dc.opaque = false
-  dc.size = new Size(width, height)
-  const maxDaily = stats.reduce((x, m) => x >= m ? x : m, 0)
-  const lines = [0, 10, 20]
-  const yScale = (height-20)/lines[2]
+  dc.size = new Size(chartWidth, chartHeight)
+  const maxDaily = series.reduce((x, m) => x >= m ? x : m, 0)
+  const lines = getBestTicks(maxDaily)
+  const yScale = (chartHeight-20)/lines[2]
   
+  // draw horizontal lines and values
   dc.setLineWidth(1)
-  
   dc.setFont(new Font('HelveticaNeue', 12))
   lines.forEach(l => {
     let p = new Path()
-    p.move(new Point(0, height-l*yScale))
-    p.addLine(new Point(width, height-l*yScale))
+    p.move(new Point(0, chartHeight-l*yScale))
+    p.addLine(new Point(chartWidth, chartHeight-l*yScale))
     dc.addPath(p)
     dc.setStrokeColor(barColor)
     dc.strokePath()
     dc.setTextColor(barColor)
-    console.log(`${l}: new Point(0, ${height-l*yScale-20})`)
-    dc.drawText(`${l}`, new Point(0, height-l*yScale-20))
+    dc.drawText(`${l}`, new Point(0, chartHeight-l*yScale-20))
   });
   
-  stats.forEach((v, i) => {
-    dc.setFillColor(i === stats.length-1 ? lastBarColor : barColor)
-    const x = leftPad + drawWidth * i / stats.length
+  // Draw the bars for each day
+  series.forEach((v, i) => {
+    dc.setFillColor(i === series.length-1 ? lastBarColor : barColor)
+    const x = leftPad + drawWidth * i / series.length
     const barHeight = Math.max(v*yScale, 4)
-    const y = height - barHeight
+    const y = chartHeight - barHeight
     dc.fillRect(new Rect(x, y, barWidth, barHeight))
   });
   
@@ -83,9 +115,7 @@ function getGraph(stats) {
   return image
 }
 
-const stats = await getAckeeStats()
-const last7Days = stats.data.domains[0].statistics.views.slice(0,7).reverse().map(s => s.count)
-
+const last7Days = await getAckeeStats()
 const graph = getGraph(last7Days)
 let w = new ListWidget()
 w.backgroundColor = new Color('#333838')
