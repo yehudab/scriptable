@@ -3,7 +3,7 @@
 // icon-color: teal; icon-glyph: chart-bar;
 
 // On first run only, uncomment line bellow and replace '888...' with the token returned after login
-// Keychain.get("ACKEE_KEY", '88888888-8888-8888-8888-888888888888')
+// Keychain.set("ACKEE_KEY", '88888888-8888-8888-8888-888888888888')
 
 // Ackee configuration
 const ACKEE_KEY = Keychain.get("ACKEE_KEY")
