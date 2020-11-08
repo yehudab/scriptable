@@ -126,6 +126,7 @@ const graph = getBarChart(last7Days)
 let w = new ListWidget()
 w.backgroundColor = new Color('#333838')
 let titleTxt = w.addText(domainName)
+titleTxt.textColor = new Color('#ffffff')
 w.addSpacer(10)
 let graphWidgetImage = w.addImage(graph)
 if (!config.runsInWidget) {
